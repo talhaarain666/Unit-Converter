@@ -1,4 +1,5 @@
 import streamlit as st
+import math
 
 unit_conversions = {
     "Area": {
@@ -22,10 +23,10 @@ unit_conversions = {
     },
     "Digital Storage": {
         "Bytes": 1,
-        "Kilobytes (KB)": 1e-3,
-        "Megabytes (MB)": 1e-6,
-        "Gigabytes (GB)": 1e-9,
-        "Terabytes (TB)": 1e-12,
+        "Kilobytes (KB)": 1/1024,
+        "Megabytes (MB)": 1/(1024**2),
+        "Gigabytes (GB)": 1/(1024**3),
+        "Terabytes (TB)": 1/(1024**4),
     },
     "Energy": {
         "Joules": 1,
@@ -106,6 +107,7 @@ unit_conversions = {
 }
 
 def convert_temperature(value, from_unit, to_unit):
+    """Convert temperature values between units"""
     if from_unit == to_unit:
         return value
     if from_unit == "Celsius":
@@ -123,36 +125,220 @@ def convert_temperature(value, from_unit, to_unit):
             return value - 273.15
         elif to_unit == "Fahrenheit":
             return (value - 273.15) * 9/5 + 32
+    return value
 
-st.title("Unit Converter")
-st.markdown("<h1 style='text-align: center; color: #4A90E2;'>🔄 Unit Converter</h1>", unsafe_allow_html=True)
+def get_temperature_formula(value, from_unit, to_unit):
+    """Get the temperature conversion formula as a string"""
+    if from_unit == to_unit:
+        return f"{value}"
+    if from_unit == "Celsius":
+        if to_unit == "Fahrenheit":
+            return f"({value} × 9/5) + 32"
+        elif to_unit == "Kelvin":
+            return f"{value} + 273.15"
+    elif from_unit == "Fahrenheit":
+        if to_unit == "Celsius":
+            return f"({value} - 32) × 5/9"
+        elif to_unit == "Kelvin":
+            return f"({value} - 32) × 5/9 + 273.15"
+    elif from_unit == "Kelvin":
+        if to_unit == "Celsius":
+            return f"{value} - 273.15"
+        elif to_unit == "Fahrenheit":
+            return f"({value} - 273.15) × 9/5 + 32"
+    return f"{value}"
 
+def format_number_for_formula(num):
+    """Format numbers to be more readable in the formula"""
+    if isinstance(num, (int, float)):
 
-category = st.selectbox("Select a category", list(unit_conversions.keys()))
-
-units = list(unit_conversions[category].keys())
-
-col1, col2, col3 = st.columns([1.2, 0.5, 1.2])
-
-with col1:
-    from_unit = st.selectbox("From", units)
-
-with col2:
-    st.markdown("<h4 style='text-align: center;'>➡️</h4>", unsafe_allow_html=True)
-
-with col3:
-    to_unit = st.selectbox("To", units)
-
-
-value = st.number_input("Enter Value", min_value=0.0, format="%.6f")
-
-if st.button("Convert"):
-    if category == "Temperature":
-        result = convert_temperature(value, from_unit, to_unit)
-    else:
-        result = value * unit_conversions[category][to_unit] / unit_conversions[category][from_unit]
+        if num == 0:
+            return "0"
+        if num == 1:
+            return "1"
+        
+        if num == int(num):
+            return str(int(num))
+        
+        special_fractions = {
+            1/60: "1/60",
+            1/3600: "1/3600",
+            1/86400: "1/86400",
+            1/1024: "1/1024",
+            1/(1024**2): "1/1048576",  # 1024²
+            1/(1024**3): "1/1073741824",  # 1024³
+            1/(1024**4): "1/1099511627776"  # 1024⁴
+        }
+        
+        for fraction_value, fraction_str in special_fractions.items():
+            if abs(num - fraction_value) < 1e-10:
+                return fraction_str
+        
+        if abs(num) < 0.001 or abs(num) > 10000:
+            sci = f"{num:.6e}"
+            parts = sci.split('e')
+            base = float(parts[0])
+            exp = int(parts[1])
+            
+            # Format as 10^exp for cleaner display
+            if abs(base - 1.0) < 1e-10:
+                return f"10^{exp}"
+            else:
+                base_formatted = f"{base:.6f}".rstrip('0').rstrip('.')
+                return f"{base_formatted} × 10^{exp}"
+        
+        # For decimal values
+        return f"{num:.6f}".rstrip('0').rstrip('.')
     
-    formula = f"({value} × {unit_conversions[category][to_unit]}) / {unit_conversions[category][from_unit]}"
-    st.success(f"Converted Value: {result} {to_unit}")
-    st.markdown(f"### 📏 Formula Used: `{formula}`")
+    return str(num)
 
+def generate_conversion_formula(value, from_unit, to_unit, category):
+    """Generate a human-readable conversion formula"""
+    # For same unit, just return the value
+    if from_unit == to_unit:
+        return f"{value}"
+    
+    # For temperature, use special formulas
+    if category == "Temperature":
+        return get_temperature_formula(value, from_unit, to_unit)
+    
+    # Get conversion factors
+    from_factor = unit_conversions[category][from_unit]
+    to_factor = unit_conversions[category][to_unit]
+    
+    # Calculate the conversion factor between the units
+    conversion_factor = to_factor / from_factor
+    
+    # Format the conversion factor
+    formatted_factor = format_number_for_formula(conversion_factor)
+    
+    # Create a readable formula
+    return f"{value} × {formatted_factor}"
+
+def smart_round(number):
+    """Intelligently round numbers based on their magnitude"""
+    # If it's an integer or very close to one, return it as an integer
+    if abs(number - round(number)) < 1e-10:
+        return int(round(number))
+    
+    # For very small numbers, keep more decimal places
+    if abs(number) < 0.001:
+        return round(number, 10)
+    
+    # For small numbers, keep 6 decimal places
+    if abs(number) < 0.1:
+        return round(number, 6)
+    
+    # For medium numbers, keep 4 decimal places
+    if abs(number) < 1000:
+        return round(number, 4)
+    
+    # For large numbers, keep fewer decimal places
+    if abs(number) < 10000:
+        return round(number, 2)
+    
+    # For very large numbers, round to nearest integer
+    return round(number)
+
+def format_result_for_display(number):
+    """Format the result for display, handling special cases"""
+    # For integers, display without decimal
+    if number == int(number):
+        return str(int(number))
+    
+    # Apply smart rounding first
+    rounded = smart_round(number)
+    
+    # For scientific notation territory, use exponential format
+    if abs(rounded) < 0.0001 or abs(rounded) > 1000000:
+        # Use exponential notation but make it cleaner
+        return f"{rounded:.6g}"
+    
+    # For regular numbers, format nicely
+    result_str = f"{rounded}"
+    # If it looks like a float representation, make sure it's clean
+    if '.' in result_str:
+        # Remove trailing zeros after decimal point
+        result_str = result_str.rstrip('0').rstrip('.')
+    
+    return result_str
+
+st.set_page_config(
+    page_title="Unit Converter",
+    page_icon="🔄",
+    layout="centered"
+)
+
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: 700;
+        text-align: center;
+        color: #4A90E2;
+        margin-bottom: 2rem;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    .convert-button {
+        width: 100%;
+        background-color: #4A90E2;
+        color: white;
+        font-weight: 600;
+    }
+    .tooltip-icon {
+        color: #888;
+        font-size: 16px;
+        cursor: help;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("<h1 class='main-header'>🔄 Unit Converter</h1>", unsafe_allow_html=True)
+
+with st.container():
+    
+    category = st.selectbox("Select a measurement category:", list(unit_conversions.keys()))
+
+    units = list(unit_conversions[category].keys())
+
+    col1, col2, col3 = st.columns([1.2, 0.5, 1.2])
+
+    with col1:
+        from_unit = st.selectbox("From:", units)
+
+    with col2:
+        st.markdown("<div style='display: flex; justify-content: center; align-items: center; height: 100%;'><h3>➡️</h3></div>", unsafe_allow_html=True)
+
+    with col3:
+        to_unit = st.selectbox("To:", units)
+
+    value = st.number_input(
+        "Enter value to convert:", 
+        value=1.0, 
+        step=0.1,
+        format="%g"
+    )
+
+    convert_clicked = st.button("Convert", type="primary", use_container_width=True)
+    
+    if convert_clicked:
+
+        if category == "Temperature":
+            result = convert_temperature(value, from_unit, to_unit)
+        else:
+            from_factor = unit_conversions[category][from_unit]
+            to_factor = unit_conversions[category][to_unit]
+            result = value * to_factor / from_factor
+        
+        formula = generate_conversion_formula(value, from_unit, to_unit, category)
+        
+        formatted_result = format_result_for_display(result)
+        
+        st.markdown(f"<h2 style='text-align: center; margin-bottom: 0.5rem;'>{formatted_result} {to_unit}</h2>", unsafe_allow_html=True)
+        
+        st.markdown(f"<p style='text-align: center; font-weight: 500; margin-bottom: 0;'>Formula: {formula}</p>", unsafe_allow_html=True)
+        
+if category == "Temperature":
+    st.info("ℹ️ Temperature conversions use specific formulas rather than simple multiplication factors.")
+elif category == "Digital Storage":
+    st.info("ℹ️ Digital storage conversions use base-2 (1024) rather than base-10 (1000).")
