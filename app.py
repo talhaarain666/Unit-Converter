@@ -1,5 +1,4 @@
 import streamlit as st
-import math
 
 unit_conversions = {
     "Area": {
@@ -20,20 +19,54 @@ unit_conversions = {
         "Megabits per second (Mbps)": 1e-6,
         "Gigabits per second (Gbps)": 1e-9,
         "Terabits per second (Tbps)": 1e-12,
+        "Kilobytes per second (KBps)": 8e-3,   # 1 KBps = 8 Kbps
+        "Megabytes per second (MBps)": 8e-6,   # 1 MBps = 8 Mbps
+        "Gigabytes per second (GBps)": 8e-9,   # 1 GBps = 8 Gbps
+        "Terabytes per second (TBps)": 8e-12,  # 1 TBps = 8 Tbps
+        "Kibibits per second (Kibps)": 1024e-3,  # 1 Kibps = 1024 bps
+        "Mebibits per second (Mibps)": 1024e-6,  # 1 Mibps = 1024 Kbps
+        "Gibibits per second (Gibps)": 1024e-9,  # 1 Gibps = 1024 Mbps
+        "Tebibits per second (Tibps)": 1024e-12, # 1 Tibps = 1024 Gbps
+        "Kibibytes per second (KiBps)": 8192e-3, # 1 KiBps = 8 Kibps
+        "Mebibytes per second (MiBps)": 8192e-6, # 1 MiBps = 8 Mibps
+        "Gibibytes per second (GiBps)": 8192e-9, # 1 GiBps = 8 Gibps
+        "Tebibytes per second (TiBps)": 8192e-12 # 1 TiBps = 8 Tibps
     },
     "Digital Storage": {
-        "Bytes": 1,
-        "Kilobytes (KB)": 1/1024,
-        "Megabytes (MB)": 1/(1024**2),
-        "Gigabytes (GB)": 1/(1024**3),
-        "Terabytes (TB)": 1/(1024**4),
+        "Bits": 1,
+        "Kilobits (Kb)": 1e-3,
+        "Megabits (Mb)": 1e-6,
+        "Gigabits (Gb)": 1e-9,
+        "Terabits (Tb)": 1e-12,
+        "Petabits (Pb)": 1e-15,
+        "Pebibits (Pib)": 1 / (1024**5),
+        "Bytes (B)": 8e-1,
+        "Kilobytes (KB)": 8e-4,
+        "Megabytes (MB)": 8e-7,
+        "Gigabytes (GB)": 8e-10,
+        "Terabytes (TB)": 8e-13,
+        "Petabytes (PB)": 8e-16,
+        "Kibibits (Kib)": 1 / 1024,
+        "Mebibits (Mib)": 1 / (1024**2),
+        "Gibibits (Gib)": 1 / (1024**3),
+        "Tebibits (Tib)": 1 / (1024**4),
+        "Kibibytes (KiB)": 8 / 1024,
+        "Mebibytes (MiB)": 8 / (1024**2),
+        "Gibibytes (GiB)": 8 / (1024**3),
+        "Tebibytes (TiB)": 8 / (1024**4),
+        "Pebibytes (PiB)": 8 / (1024**5),
     },
     "Energy": {
-        "Joules": 1,
-        "Kilojoules": 0.001,
-        "Calories": 0.239006,
-        "Kilocalories": 0.000239006,
-        "Watt-hours": 0.000277778,
+        "Joules (J)": 1,
+        "Kilojoules (kJ)": 1e-3,
+        "Gram calorie (cal)": 1 / 4.184,
+        "Kilocalorie (kcal)": 1 / 4184,
+        "Watt hour (Wh)": 1 / 3600,
+        "Kilowatt-hour (kWh)": 1 / 3.6e6,
+        "Electronvolt (eV)": 1 / 1.60218e-19,
+        "British thermal unit (BTU)": 1 / 1055.06,
+        "US therm": 1 / 1.055e8,
+        "Foot-pound (ft⋅lb)": 1 / 1.35582
     },
     "Frequency": {
         "Hertz": 1,
@@ -42,8 +75,10 @@ unit_conversions = {
         "Gigahertz": 1e-9,
     },
     "Fuel Economy": {
-        "Kilometers per liter": 1,
-        "Miles per gallon": 2.35215,
+        "Kilometers per liter (km/L)": 1,
+        "Miles per US gallon (mpg US)": 2.35215,
+        "Miles per gallon (mpg)": 2.825,
+        "Liters per 100 kilometers (L/100 km)": 100
     },
     "Length": {
         "Meters": 1,
@@ -59,30 +94,39 @@ unit_conversions = {
         "Inches": 39.3701,
     },
     "Mass": {
-        "Kilograms": 1,
-        "Grams": 1000,
-        "Milligrams": 1_000_000,
-        "Pounds": 2.20462,
-        "Ounces": 35.274,
+        "Tonne": 1,
+        "Kilogram": 1000,
+        "Gram": 1_000_000,
+        "Milligram": 1_000_000_000,
+        "Microgram": 1_000_000_000_000,
+        "Imperial ton": 0.984207,
+        "US ton": 1.10231,
+        "Stone": 157.473,
+        "Pound": 2204.62,
+        "Ounce": 35274
     },
     "Plane Angle": {
-        "Degrees": 1,
-        "Radians": 0.0174533,
-        "Gradians": 1.11111,
+        "Degree": 1,
+        "Radian": 0.0174533,
+        "Gradian": 1.11111,
+        "Milliradian": 17.4533,
+        "Minute of arc": 60,
+        "Arcsecond": 3600
     },
     "Pressure": {
-        "Pascals": 1,
-        "Kilopascals": 0.001,
-        "Bars": 1e-5,
-        "Atmospheres": 9.8692e-6,
-        "Millimeters of Mercury": 0.00750062,
-        "Pounds per square inch (PSI)": 0.000145038,
+        "Pascal": 1,
+        "Kilopascal": 0.001,
+        "Bar": 1e-5,
+        "Standard atmosphere": 9.8692e-6,
+        "Torr": 0.00750062,
+        "Pound per square inch (PSI)": 0.000145038
     },
     "Speed": {
-        "Meters per second": 1,
-        "Kilometers per hour": 3.6,
-        "Miles per hour": 2.23694,
-        "Knots": 1.94384,
+        "Metre per second": 1,
+        "Kilometre per hour": 3.6,
+        "Mile per hour": 2.23694,
+        "Foot per second": 3.28084,
+        "Knot": 1.94384
     },
     "Temperature": {
         "Celsius": "C",
@@ -90,19 +134,44 @@ unit_conversions = {
         "Kelvin": "K",
     },
     "Time": {
-        "Seconds": 1,
-        "Minutes": 1/60,
-        "Hours": 1/3600,
-        "Days": 1/86400,
+        "Nanosecond": 1e9,
+        "Microsecond": 1e6,
+        "Millisecond": 1e3,
+        "Second": 1,
+        "Minute": 1/60,
+        "Hour": 1/3600,
+        "Day": 1/86400,
+        "Week": 1/604800,
+        "Month": 1/2.628e6,  # Approximate (30.44 days)
+        "Calendar year": 1/3.154e7,  # Approximate (365.25 days)
+        "Decade": 1/3.154e8,  # Approximate (10 years)
+        "Century": 1/3.154e9  # Approximate (100 years)
     },
     "Volume": {
-        "Liters": 1,
-        "Milliliters": 1000,
-        "Cubic meters": 0.001,
-        "Cubic centimeters": 1000,
-        "Cubic inches": 61.0237,
-        "Cubic feet": 0.0353147,
-        "Gallons": 0.264172,
+        "Cubic meter": 1,
+        "Liter": 1000,  # 1 cubic meter = 1000 liters
+        "Milliliter": 1e6,  # 1 cubic meter = 1,000,000 mL
+        "Cubic centimeter": 1e6,  # Equivalent to milliliters
+        "Cubic inch": 61023.7,
+        "Cubic foot": 35.3147,
+
+        # US Liquid Measures
+        "US liquid gallon": 264.172,
+        "US liquid quart": 1056.69,
+        "US liquid pint": 2113.38,
+        "US legal cup": 4166.67,
+        "US fluid ounce": 33814,
+        "US tablespoon": 67628,
+        "US teaspoon": 202884,
+
+        # Imperial (UK) Measures
+        "Imperial gallon": 219.969,
+        "Imperial quart": 879.877,
+        "Imperial pint": 1759.75,
+        "Imperial cup": 3519.51,
+        "Imperial fluid ounce": 35195.1,
+        "Imperial tablespoon": 56312.1,
+        "Imperial teaspoon": 168936
     }
 }
 
@@ -338,6 +407,8 @@ with st.container():
         
         st.markdown(f"<p style='text-align: center; font-weight: 500; margin-bottom: 0;'>Formula: {formula}</p>", unsafe_allow_html=True)
         
+        
+
 if category == "Temperature":
     st.info("ℹ️ Temperature conversions use specific formulas rather than simple multiplication factors.")
 elif category == "Digital Storage":
